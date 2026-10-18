@@ -689,17 +689,33 @@ end
 -- Hooking the tooltips
 --------------------------------------------------------------------------
 
+local function LinkID(link)
+    local n = type(link) == "string" and link:match("item:(%d+)")
+    return n and tonumber(n)
+end
+
+-- the item a tooltip shows: the data's ID, else its link, else the
+-- tooltip's own item (TooltipUtil on modern clients, GetItem on older)
 local function ItemID(tooltip, data)
     local id = data and ns.Plain(data.id)
     if id then return id end
+    id = data and LinkID(data.hyperlink)
+    if id then return id end
+    if tooltip and TooltipUtil and TooltipUtil.GetDisplayedItem then
+        local ok, _, link, itemID = pcall(TooltipUtil.GetDisplayedItem, tooltip)
+        id = ok and (ns.Plain(itemID) or LinkID(link))
+        if id then return id end
+    end
     if tooltip and tooltip.GetItem then
         local ok, _, link = pcall(tooltip.GetItem, tooltip)
-        if ok and type(link) == "string" then
-            local n = link:match("item:(%d+)")
-            return n and tonumber(n)
-        end
+        if ok then return LinkID(link) end
     end
 end
+
+-- what the hooks saw, for /rxpp status: calls, the ones on a tooltip we
+-- decorate, the ones with no item ID, the ones that got lines, the last
+-- item and tooltip
+ns.tipStats = {calls = 0, wanted = 0, noID = 0, lines = 0}
 
 -- The tooltips a player reads an item in: the game's own and the chat
 -- link's. Not the comparison ones beside them (the item you wear), not a
@@ -715,11 +731,53 @@ local function Wanted(tooltip)
 end
 
 local function Decorate(tooltip, data)
+    local stats = ns.tipStats
+    stats.wanted = stats.wanted + 1
     local id = ItemID(tooltip, data)
-    if not id then return false end
+    stats.lastID = id
+    if not id then
+        stats.noID = stats.noID + 1
+        return false
+    end
     local lines = ns.TooltipLines(id)
     for _, l in ipairs(lines) do tooltip:AddLine(l.text, l.color[1], l.color[2], l.color[3]) end
+    if #lines > 0 then stats.lines = stats.lines + 1 end
     return #lines > 0
+end
+
+-- /rxpp need <item link or ID>: what the tooltip would say, in chat
+function ns.PrintNeeds(input)
+    local id = LinkID(input) or tonumber(tostring(input):match("(%d+)"))
+    if not id then
+        ns.Print("/rxpp need <item link or item ID>")
+        return
+    end
+    local lines = ns.TooltipLines(id)
+    if #lines == 0 then
+        local picked = {}
+        for name in pairs(ns.GetTracked()) do
+            if ns.CRAFT[name] then picked[#picked + 1] = name end
+        end
+        table.sort(picked)
+        ns.Print("item %d: the plan names nothing (craft professions picked: %s)", id,
+                 #picked > 0 and table.concat(picked, ", ") or "none")
+        return
+    end
+    ns.Print("item %d:", id)
+    for _, l in ipairs(lines) do
+        if l.text ~= " " then print(l.text) end
+    end
+end
+
+-- for /rxpp status
+function ns.TooltipStatus()
+    local stats, n = ns.tipStats, 0
+    local ok, index = pcall(ns.NeedIndex)
+    for _ in pairs(ok and index or {}) do n = n + 1 end
+    local tooltip = stats.lastTooltip
+    return string.format("item tooltips: %s through %s; %d item tooltips seen, %d ours, %d without an item ID, %d with lines; last item %s on %s; the plan names %d items",
+                         ns.TooltipOn() and "on" or "off", tostring(ns.tooltipAPI), stats.calls, stats.wanted, stats.noID,
+                         stats.lines, tostring(stats.lastID), tostring(tooltip), n)
 end
 
 local function Safely(fn, ...)
@@ -741,7 +799,13 @@ do
     ns.tooltipAPI = "none"
     if tdp and tdp.AddTooltipPostCall and itemType ~= nil and
         pcall(tdp.AddTooltipPostCall, itemType, function(tooltip, data)
-            if Wanted(tooltip) then Safely(Decorate, tooltip, data) end
+            local stats = ns.tipStats
+            stats.calls = stats.calls + 1
+            local okName, name = pcall(function() return tooltip and tooltip.GetName and tooltip:GetName() end)
+            stats.lastTooltip = okName and name or "?"
+            if Wanted(tooltip) and Safely(Decorate, tooltip, data) and tooltip.Show then
+                pcall(tooltip.Show, tooltip) -- fit the new lines
+            end
         end) then
         ns.tooltipAPI = "TooltipDataProcessor"
     else
@@ -753,6 +817,8 @@ do
                 -- then lines at every call rather than once a session
                 local once = false
                 local hooked = pcall(tooltip.HookScript, tooltip, "OnTooltipSetItem", function(self)
+                    ns.tipStats.calls = ns.tipStats.calls + 1
+                    ns.tipStats.lastTooltip = name
                     if (once and done[self]) or not Wanted(self) then return end
                     if Safely(Decorate, self) then
                         done[self] = true

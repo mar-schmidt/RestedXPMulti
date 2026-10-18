@@ -1302,6 +1302,35 @@ do
           "tooltips: the spans in the window's order: " .. table.concat(rows, ", "):sub(1, 120))
 end
 
+-- what the hooks saw, in /rxpp status, and /rxpp need <link or ID>: the
+-- tooltip's lines in chat, or which professions the plan reads
+do
+    local w = TooltipWorld({client = "forever", events = FOREVER_EVENTS, level = 14, extra = {{name = "Tailoring", rank = 63, maxRank = 75}},
+                            db = {setupDone = true, chosen = {Tailoring = true}, show = true}}, {[2592] = {bags = 25, bank = 15}})
+    local shown = 0
+    local tip = {lines = {}}
+    function tip:AddLine(text) table.insert(self.lines, text) end
+    function tip:GetName() return "GameTooltip" end
+    function tip:Show() shown = shown + 1 end
+    _G.GameTooltip = tip
+    w.post[2](tip, {id = 2592})
+    w.post[2](tip, {hyperlink = "|cffffffff|Hitem:2997::::::::14:::::|h[Bolt of Woolen Cloth]|h|r"})
+    w.post[2](tip, {})
+    w.post[2]({GetName = function() return "ShoppingTooltip1" end, AddLine = function() end}, {id = 2592})
+    _G.GameTooltip = nil
+    check(shown == 2, "tooltips: the tooltip is shown again to fit the new lines (" .. shown .. ")")
+    printed = {}
+    w.slash("status")
+    check(Printed("item tooltips: on through TooltipDataProcessor; 4 item tooltips seen, 3 ours, 1 without an item ID, 2 with lines; last item nil on ShoppingTooltip1"),
+          "tooltips: /rxpp status says what the hooks saw: " .. tostring(printed[#printed]))
+    printed = {}
+    w.slash("need |cffffffff|Hitem:2592::::::::14:::::|h[Wool Cloth]|h|r")
+    check(Printed("item 2592:") and Printed("  Now 63-70 · 21 (bags 21) of ~21 · Bolt of Woolen Cloth"), "tooltips: /rxpp need with a link prints the lines")
+    printed = {}
+    w.slash("need 2771")
+    check(Printed("item 2771: the plan names nothing (craft professions picked: Tailoring)"), "tooltips: /rxpp need for an item the plan does not name says what it reads")
+end
+
 -- a later row of alternatives counts the ones you know: Forever's
 -- Tailoring 265 is Runecloth Shoulders (Rugged Leather in it) or
 -- Runecloth Headband (none); knowing only the headband, the leather is

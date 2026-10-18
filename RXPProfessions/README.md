@@ -123,6 +123,7 @@ You have 40 (bags 25 · bank 15) · ~140 short
 - `/rxpp tooltip` — item tooltips on/off
 - `/rxpp tooltip later` — show/hide the spans after the one you are in
 - `/rxpp tooltip others` — also show the professions you did not pick
+- `/rxpp need <item link or ID>` — what the item tooltip would say, in chat
 
 ## Notes & roadmap
 

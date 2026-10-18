@@ -1472,6 +1472,8 @@ SlashCmdList["RXPPROFESSIONS"] = function(input)
         ns.ShowSetup()
     elseif input == "tooltip" or input == "tooltiplater" or input == "tooltipothers" then
         ns.ToggleTooltipSetting(input)
+    elseif input:sub(1, 4) == "need" and ns.PrintNeeds then
+        ns.PrintNeeds(input:sub(5))
     elseif input == "status" then
         ns.Refresh()
         local names = {}
@@ -1507,9 +1509,7 @@ SlashCmdList["RXPPROFESSIONS"] = function(input)
         if #ns.missingEvents > 0 then
             ns.Print("events this client lacks (skipped): %s", table.concat(ns.missingEvents, ", "))
         end
-        if ns.TooltipOn then
-            ns.Print("item tooltips: %s through %s", ns.TooltipOn() and "on" or "off", tostring(ns.tooltipAPI))
-        end
+        if ns.TooltipStatus then ns.Print("%s", ns.TooltipStatus()) end
     else
         ns.Print(L["commands: |cFFFFCC00/rxpp|r toggle the window, |cFFFFCC00/rxpp setup|r choose professions, |cFFFFCC00/rxpp status|r what the client gives us"])
         ns.Print(L["item tooltips: |cFFFFCC00/rxpp tooltip|r on or off, |cFFFFCC00/rxpp tooltip later|r the spans after the one you are in, |cFFFFCC00/rxpp tooltip others|r the professions you did not pick"])
