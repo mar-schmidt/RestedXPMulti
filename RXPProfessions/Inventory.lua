@@ -167,6 +167,13 @@ local function Products()
             end
         end
     end
+    -- what the professions make from what you gather (Data.lua's REFINE),
+    -- where no route row makes it
+    for _, r in ipairs(ns.REFINE or {}) do
+        local id = r[1]
+        english[id] = english[id] or r[2]
+        if not productOf[id] then productOf[id] = {id = id, prof = r[3], list = r[4], makes = r.makes or 1, refine = true} end
+    end
     local producers = {}
     for prof, craft in pairs(ns.CRAFT) do
         for _, row in ipairs(craft.route) do
@@ -196,6 +203,9 @@ local function AllItems()
         for _, row in ipairs(craft.route) do add(row) end
     end
     for _, row in ipairs(ns.FISH_COOKING or {}) do add(row) end
+    for _, r in ipairs(ns.REFINE or {}) do
+        for _, m in ipairs(r[4]) do all[m[1]] = true end
+    end
     ns.allItems = all
     return all
 end

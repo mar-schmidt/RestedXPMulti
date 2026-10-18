@@ -113,8 +113,11 @@ You have 40 (bags 25 · bank 15) · ~140 short
   skills, your picks, the recipes and trainer data the window keeps, or
   your count of a reagent the routes make change. A hover costs a few
   reads, not a rebuild.
-- Not yet: materials the routes do not make themselves (ore smelted into
-  bars, cloth into the bolts a route buys, leather into heavier leather).
+- Materials no route row makes are followed too, to what you gather:
+  ore through the bars it smelts into (when you picked Mining), cloth
+  through the bolts Forever's route has no row for, hides through the
+  cured hides, stone through grinding stones (Data.lua's `REFINE`).
+  Leather is not combined: skinning gives the heavier leather itself.
 
 ## Commands
 

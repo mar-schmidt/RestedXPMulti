@@ -1331,6 +1331,39 @@ do
     check(Printed("item 2771: the plan names nothing (craft professions picked: Tailoring)"), "tooltips: /rxpp need for an item the plan does not name says what it reads")
 end
 
+-- what the professions make from what you gather (Data.lua's REFINE):
+-- ore through the bars it smelts into (with Mining picked), cloth through
+-- the bolts Forever's route uses without a row for them, hides through
+-- the cured hides
+do
+    local function world(client, profs, chosen, counts)
+        local c = {}
+        for _, n in ipairs(chosen) do c[n] = true end
+        return TooltipWorld({client = client, events = With(client == "forever" and FOREVER_EVENTS or CLASSIC_EVENTS, BANK_EVENTS), level = 40,
+                             extra = profs, db = {setupDone = true, chosen = c, show = true}}, counts)
+    end
+    local w = world("classic", {{name = "Engineering", rank = 30, maxRank = 75}}, {"Engineering", "Mining"})
+    check(Tip(w, 2770):find("  Now 30-50 · 0 of ~20 · Handful of Copper Bolts (via Copper Bar)\n", 1, true),
+          "refine: Copper Ore through the bars it smelts into")
+    check(Tip(w, 2771):find("  105-125 · 0 of ~20 · Bronze Tube (via Bronze Bar)\n", 1, true), "refine: Tin Ore through Bronze Bar, two bars a smelt")
+    w.bankVisible = true
+    w.counts[2770] = {bags = 0, bank = 12}
+    FireInventory(w, "BANKFRAME_OPENED")
+    check(w.ns.db.bankSeen[2770] == 12, "refine: the bank count covers ore too")
+    check(Tip(world("classic", {{name = "Engineering", rank = 30, maxRank = 75}}, {"Engineering"}), 2770) == "",
+          "refine: no Mining picked - ore is not kept for bars")
+    local bs = world("classic", {{name = "Blacksmithing", rank = 100, maxRank = 150}}, {"Blacksmithing", "Mining"}, {[2841] = {bags = 10, bank = 0}})
+    check(Tip(bs, 2771):find("  105-125 · 0 of ~55 · Rough Bronze Leggings (via Bronze Bar)\n", 1, true),
+          "refine: 10 Bronze Bar in the bags come off, two bars a smelt ((120 - 10) / 2)")
+    check(Tip(bs, 2838):find("  190-215 · 0 of ~144 · Golden Scale Bracers (via Heavy Grinding Stone)\n", 1, true), "refine: Heavy Stone through the grinding stones")
+    local tail = world("forever", {{name = "Tailoring", rank = 165, maxRank = 225}}, {"Tailoring"})
+    check(Tip(tail, 4338):find("  170-185 · 0 of ~150 · Black Mageweave Leggings / Black Mageweave Vest (via Bolt of Mageweave)\n", 1, true),
+          "refine: Forever's Mageweave Cloth through the bolts its route has no row for (15 x 2 x 5)")
+    local lw = world("forever", {{name = "Leatherworking", rank = 110, maxRank = 150}}, {"Leatherworking"})
+    check(Tip(lw, 4232):find("  115-137 · 0 of ~22 · Dark Leather Belt (via Cured Medium Hide)\n", 1, true), "refine: Medium Hide through Cured Medium Hide")
+    check(Tip(lw, 4289):find("  155-180 · 0 of ~75 · Barbaric Shoulders (via Cured Heavy Hide)\n", 1, true), "refine: three Salt a Cured Heavy Hide")
+end
+
 -- a later row of alternatives counts the ones you know: Forever's
 -- Tailoring 265 is Runecloth Shoulders (Rugged Leather in it) or
 -- Runecloth Headband (none); knowing only the headband, the leather is
